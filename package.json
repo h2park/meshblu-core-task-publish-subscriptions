@@ -1,0 +1,42 @@
+{
+  "name": "meshblu-core-task-publish-subscriptions",
+  "version": "1.0.0",
+  "description": "Publish Meshblu messages to subscribed devices via redis",
+  "main": "index.js",
+  "dependencies": {
+    "meshblu-core-manager-subscriptions": "^3.0.0",
+    "uuid": "^2.0.1"
+  },
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "coffee-coverage": "^0.7.0",
+    "coffee-script": "^1.10.0",
+    "fakeredis": "^1.0.2",
+    "istanbul": "^0.4.1",
+    "meshblu-core-cache": "^1.4.0",
+    "meshblu-core-datastore": "^2.3.1",
+    "meshblu-core-job-manager": "^3.1.4",
+    "mocha": "^2.3.4",
+    "mocha-istanbul": "^0.2.0",
+    "mongojs": "^2.2.2",
+    "sinon": "^1.17.2",
+    "sinon-chai": "^2.8.0"
+  },
+  "scripts": {
+    "test": "istanbul cover _mocha -- -R spec --require coffee-coverage/register-istanbul"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/octoblu/meshblu-core-task-publish-subscriptions.git"
+  },
+  "keywords": [
+    "meshblu",
+    "meshblu-core"
+  ],
+  "author": "Octoblu <npm@octoblu.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/octoblu/meshblu-core-task-publish-subscriptions/issues"
+  },
+  "homepage": "https://github.com/octoblu/meshblu-core-task-publish-subscriptions#readme"
+}
