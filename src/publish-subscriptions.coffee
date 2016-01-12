@@ -51,6 +51,14 @@ class DeliverSubscriptions
       auth =
         uuid: subscriberUuid
         token: token
+
+      message = JSON.parse JSON.stringify(message)
+
+      message.forwardedFor ?= []
+
+      # use the real uuid of the device
+      message.forwardedFor.push subscriberUuid
+
       @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, messageType, message}, callback
 
 module.exports = DeliverSubscriptions
