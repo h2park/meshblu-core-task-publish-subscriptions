@@ -31,6 +31,6 @@ class DeliverSubscriptions
       async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,messageType,message}), callback
 
   _publishSubscription: ({toUuid,messageType,message}, {subscriberUuid}, callback) =>
-    @cache.publish "#{messageType}:#{subscriberUuid}", JSON.stringify(message), callback
+    @cache.publish "#{messageType}:#{subscriberUuid}", message, callback
 
 module.exports = DeliverSubscriptions
