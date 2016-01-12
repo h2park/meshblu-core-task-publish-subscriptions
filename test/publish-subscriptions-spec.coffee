@@ -104,4 +104,4 @@ describe 'DeliverSubscriptions', ->
           expect(metadata.messageType).to.equal 'sent'
           expect(metadata.toUuid).to.equal 'subscriber-uuid'
           expect(metadata.fromUuid).to.equal 'subscriber-uuid'
-          expect(rawData).to.equal JSON.stringify devices:'*', forwardedFor:['subscriber-uuid']
+          expect(rawData).to.equal JSON.stringify devices:'*', forwardedFor:['someone-uuid']
