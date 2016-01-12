@@ -2,12 +2,28 @@ _ = require 'lodash'
 async = require 'async'
 uuid = require 'uuid'
 SubscriptionManager = require 'meshblu-core-manager-subscription'
+TokenManager = require 'meshblu-core-manager-token'
 http = require 'http'
 
 class DeliverSubscriptions
   constructor: (options={},dependencies={}) ->
-    {@cache,datastore,pepper,uuidAliasResolver,@jobManager} = options
+    {cache,datastore,pepper,uuidAliasResolver,@jobManager} = options
+    {@tokenManager} = dependencies
     @subscriptionManager ?= new SubscriptionManager {datastore, uuidAliasResolver}
+    @tokenManager ?= new TokenManager {cache, uuidAliasResolver}
+
+  _createJob: ({messageType, toUuid, message, fromUuid, auth}, callback) =>
+    request =
+      data: message
+      metadata:
+        auth: auth
+        toUuid: toUuid
+        fromUuid: fromUuid
+        jobType: 'DeliverMessage'
+        messageType: messageType
+        responseId: uuid.v4()
+
+    @jobManager.createRequest 'request', request, callback
 
   _doCallback: (request, code, callback) =>
     response =
@@ -31,6 +47,10 @@ class DeliverSubscriptions
       async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,messageType,message}), callback
 
   _publishSubscription: ({toUuid,messageType,message}, {subscriberUuid}, callback) =>
-    @cache.publish "#{messageType}:#{subscriberUuid}", JSON.stringify(message), callback
+    @tokenManager.generateAndStoreTokenInCache subscriberUuid, (error, token) =>
+      auth =
+        uuid: subscriberUuid
+        token: token
+      @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, messageType, message}, callback
 
 module.exports = DeliverSubscriptions

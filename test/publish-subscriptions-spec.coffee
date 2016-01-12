@@ -4,6 +4,8 @@ redis = require 'fakeredis'
 mongojs = require 'mongojs'
 Datastore = require 'meshblu-core-datastore'
 Cache = require 'meshblu-core-cache'
+TokenManager = require 'meshblu-core-manager-token'
+JobManager = require 'meshblu-core-job-manager'
 DeliverSubscriptions = require '../'
 
 describe 'DeliverSubscriptions', ->
@@ -21,7 +23,14 @@ describe 'DeliverSubscriptions', ->
     @uuidAliasResolver = resolve: (uuid, callback) => callback(null, uuid)
     @cache = new Cache
       client: _.bindAll redis.createClient @redisPubSubKey
-      namespace: 'meshblu'
+      namespace: 'meshblu-token-one-time'
+
+    @tokenManager = new TokenManager {@cache, @pepper, @uuidAliasResolver}
+    @tokenManager.generateToken = sinon.stub().returns 'abc123'
+
+    @jobManager = new JobManager
+      client: _.bindAll redis.createClient @redisKey
+      timeoutSeconds: 1
 
     options = {
       pepper: 'totally-a-secret'
@@ -32,7 +41,8 @@ describe 'DeliverSubscriptions', ->
       @pepper
     }
 
-    dependencies = {@request}
+    dependencies = {@tokenManager}
+
     @client = _.bindAll redis.createClient @redisPubSubKey
 
     @sut = new DeliverSubscriptions options, dependencies
@@ -73,8 +83,25 @@ describe 'DeliverSubscriptions', ->
 
         expect(@response).to.deep.equal expectedResponse
 
-      it 'should send a message to my subscribed devices', (done) ->
-        _.delay =>
-          expect(@message).to.equal '{"devices":"*"}'
+      it 'should create a one time token', (done) ->
+        @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
+          expect(exists).to.be.true
           done()
-        , 100
+
+      describe 'JobManager gets DeliverMessage job', (done) ->
+        beforeEach (done) ->
+          @jobManager.getRequest ['request'], (error, @request) =>
+            done error
+
+        it 'should be a sent messageType', ->
+          auth =
+            uuid: 'subscriber-uuid'
+            token: 'abc123'
+
+          {rawData, metadata} = @request
+          expect(metadata.auth).to.deep.equal auth
+          expect(metadata.jobType).to.equal 'DeliverMessage'
+          expect(metadata.messageType).to.equal 'sent'
+          expect(metadata.toUuid).to.equal 'subscriber-uuid'
+          expect(metadata.fromUuid).to.equal 'subscriber-uuid'
+          expect(rawData).to.equal '{"devices":"*"}'
