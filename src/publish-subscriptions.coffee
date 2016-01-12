@@ -7,10 +7,10 @@ http = require 'http'
 
 class DeliverSubscriptions
   constructor: (options={},dependencies={}) ->
-    {cache,datastore,pepper,uuidAliasResolver,@jobManager} = options
+    {cache,datastore,pepper,@uuidAliasResolver,@jobManager} = options
     {@tokenManager} = dependencies
-    @subscriptionManager ?= new SubscriptionManager {datastore, uuidAliasResolver}
-    @tokenManager ?= new TokenManager {cache, uuidAliasResolver, pepper}
+    @subscriptionManager ?= new SubscriptionManager {datastore, @uuidAliasResolver}
+    @tokenManager ?= new TokenManager {cache, @uuidAliasResolver, pepper}
 
   _createJob: ({messageType, toUuid, message, fromUuid, auth}, callback) =>
     request =
@@ -37,16 +37,16 @@ class DeliverSubscriptions
     {toUuid, fromUuid, messageType} = request.metadata
     message = JSON.parse request.rawData
 
-    @_send {toUuid, messageType, message}, (error) =>
+    @_send {toUuid, fromUuid, messageType, message}, (error) =>
       return callback error if error?
       return @_doCallback request, 204, callback
 
-  _send: ({toUuid,messageType,message}, callback=->) =>
+  _send: ({toUuid,fromUuid,messageType,message}, callback=->) =>
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
-      async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,messageType,message}), callback
+      async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message}), callback
 
-  _publishSubscription: ({toUuid,messageType,message}, {subscriberUuid}, callback) =>
+  _publishSubscription: ({toUuid, fromUuid, messageType, message}, {subscriberUuid}, callback) =>
     @tokenManager.generateAndStoreTokenInCache subscriberUuid, (error, token) =>
       auth =
         uuid: subscriberUuid
@@ -56,9 +56,10 @@ class DeliverSubscriptions
 
       message.forwardedFor ?= []
 
-      # use the real uuid of the device
-      message.forwardedFor.push subscriberUuid
+      @uuidAliasResolver.resolve fromUuid, (error, resolvedFromUuid) =>
+        # use the real uuid of the device
+        message.forwardedFor.push resolvedFromUuid
 
-      @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, messageType, message}, callback
+        @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, messageType, message}, callback
 
 module.exports = DeliverSubscriptions
