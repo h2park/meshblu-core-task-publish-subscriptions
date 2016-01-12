@@ -10,7 +10,7 @@ class DeliverSubscriptions
     {cache,datastore,pepper,uuidAliasResolver,@jobManager} = options
     {@tokenManager} = dependencies
     @subscriptionManager ?= new SubscriptionManager {datastore, uuidAliasResolver}
-    @tokenManager ?= new TokenManager {cache, uuidAliasResolver}
+    @tokenManager ?= new TokenManager {cache, uuidAliasResolver, pepper}
 
   _createJob: ({messageType, toUuid, message, fromUuid, auth}, callback) =>
     request =
