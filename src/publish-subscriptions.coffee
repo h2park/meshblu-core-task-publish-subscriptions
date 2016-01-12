@@ -1,7 +1,7 @@
 _ = require 'lodash'
 async = require 'async'
 uuid = require 'uuid'
-SubscriptionManager = require 'meshblu-core-manager-subscriptions'
+SubscriptionManager = require 'meshblu-core-manager-subscription'
 http = require 'http'
 
 class DeliverSubscriptions
@@ -31,6 +31,6 @@ class DeliverSubscriptions
       async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,messageType,message}), callback
 
   _publishSubscription: ({toUuid,messageType,message}, {subscriberUuid}, callback) =>
-    @cache.publish "#{messageType}:#{subscriberUuid}", message, callback
+    @cache.publish "#{messageType}:#{subscriberUuid}", JSON.stringify(message), callback
 
 module.exports = DeliverSubscriptions
