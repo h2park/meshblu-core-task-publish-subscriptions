@@ -47,6 +47,9 @@ class DeliverSubscriptions
       async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message}), callback
 
   _publishSubscription: ({toUuid, fromUuid, messageType, message}, {subscriberUuid}, callback) =>
+    newFromUuid = fromUuid
+    newFromUuid = toUuid if messageType == 'received'
+
     @tokenManager.generateAndStoreTokenInCache subscriberUuid, (error, token) =>
       auth =
         uuid: subscriberUuid
@@ -60,6 +63,6 @@ class DeliverSubscriptions
         # use the real uuid of the device
         message.forwardedFor.push resolvedFromUuid
 
-        @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, messageType, message}, callback
+        @_createJob {toUuid: subscriberUuid, fromUuid: newFromUuid, auth, messageType, message}, callback
 
 module.exports = DeliverSubscriptions
