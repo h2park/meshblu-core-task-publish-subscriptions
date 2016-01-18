@@ -70,6 +70,7 @@ describe 'DeliverSubscriptions', ->
             toUuid: 'emitter-uuid'
             fromUuid: 'someone-uuid'
             messageType: 'sent'
+            jobType: 'DeliverSentMessage'
           rawData: '{"devices":"*"}'
 
         @sut.do request, (error, @response) => done error
@@ -100,7 +101,7 @@ describe 'DeliverSubscriptions', ->
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth
-          expect(metadata.jobType).to.equal 'DeliverMessage'
+          expect(metadata.jobType).to.equal 'DeliverSentMessage'
           expect(metadata.messageType).to.equal 'sent'
           expect(metadata.toUuid).to.equal 'subscriber-uuid'
           expect(metadata.fromUuid).to.equal 'someone-uuid'

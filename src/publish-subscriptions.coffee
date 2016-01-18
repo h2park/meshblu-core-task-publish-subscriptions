@@ -44,7 +44,7 @@ class DeliverSubscriptions
   _send: ({toUuid,fromUuid,messageType,message,jobType}, callback=->) =>
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
-      async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message}), callback
+      async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message,jobType}), callback
 
   _publishSubscription: ({toUuid, fromUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
     newFromUuid = fromUuid
