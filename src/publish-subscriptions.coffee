@@ -12,14 +12,14 @@ class DeliverSubscriptions
     @subscriptionManager ?= new SubscriptionManager {datastore, @uuidAliasResolver}
     @tokenManager ?= new TokenManager {cache, @uuidAliasResolver, pepper}
 
-  _createJob: ({messageType, toUuid, message, fromUuid, auth}, callback) =>
+  _createJob: ({messageType, jobType, toUuid, message, fromUuid, auth}, callback) =>
     request =
       data: message
       metadata:
         auth: auth
         toUuid: toUuid
         fromUuid: fromUuid
-        jobType: 'DeliverMessage'
+        jobType: jobType
         messageType: messageType
         responseId: uuid.v4()
 
@@ -34,19 +34,19 @@ class DeliverSubscriptions
     callback null, response
 
   do: (request, callback) =>
-    {toUuid, fromUuid, messageType} = request.metadata
+    {toUuid, fromUuid, messageType, jobType} = request.metadata
     message = JSON.parse request.rawData
 
-    @_send {toUuid, fromUuid, messageType, message}, (error) =>
+    @_send {toUuid, fromUuid, messageType, message, jobType}, (error) =>
       return callback error if error?
       return @_doCallback request, 204, callback
 
-  _send: ({toUuid,fromUuid,messageType,message}, callback=->) =>
+  _send: ({toUuid,fromUuid,messageType,message,jobType}, callback=->) =>
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
       async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message}), callback
 
-  _publishSubscription: ({toUuid, fromUuid, messageType, message}, {subscriberUuid}, callback) =>
+  _publishSubscription: ({toUuid, fromUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
     newFromUuid = fromUuid
     newFromUuid = toUuid if messageType == 'received'
 
@@ -63,6 +63,6 @@ class DeliverSubscriptions
         # use the real uuid of the device
         message.forwardedFor.push resolvedFromUuid
 
-        @_createJob {toUuid: subscriberUuid, fromUuid: newFromUuid, auth, messageType, message}, callback
+        @_createJob {toUuid: subscriberUuid, fromUuid: newFromUuid, auth, jobType, messageType, message}, callback
 
 module.exports = DeliverSubscriptions
