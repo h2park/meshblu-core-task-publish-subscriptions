@@ -56,9 +56,9 @@ class DeliverSubscriptions
 
       message.forwardedFor ?= []
 
-      @uuidAliasResolver.resolve fromUuid, (error, resolvedFromUuid) =>
+      @uuidAliasResolver.resolve toUuid, (error, resolvedToUuid) =>
         # use the real uuid of the device
-        message.forwardedFor.push resolvedFromUuid
+        message.forwardedFor.push resolvedToUuid
 
         @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, jobType, messageType, message}, callback
 
