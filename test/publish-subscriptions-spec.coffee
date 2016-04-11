@@ -106,3 +106,102 @@ describe 'DeliverSubscriptions', ->
           expect(metadata.toUuid).to.equal 'subscriber-uuid'
           expect(metadata.fromUuid).to.equal 'subscriber-uuid'
           expect(rawData).to.equal JSON.stringify devices:'*', forwardedFor:['emitter-uuid']
+
+    context 'when there is a received subscription for someone besides yourself', ->
+      beforeEach (done) ->
+        @client.subscribe 'received:subscriber-uuid', done
+
+      beforeEach ->
+        @client.once 'message', (error, @message) =>
+
+      beforeEach (done) ->
+        record =
+          type: 'received'
+          emitterUuid: 'emitter-uuid'
+          subscriberUuid: 'subscriber-uuid'
+
+        @datastore.insert record, done
+
+      beforeEach (done) ->
+        request =
+          metadata:
+            responseId: 'its-electric'
+            toUuid: 'emitter-uuid'
+            fromUuid: 'someone-uuid'
+            messageType: 'received'
+            jobType: 'DeliverReceivedMessage'
+          rawData: '{"devices":"*"}'
+
+        @sut.do request, (error, @response) => done error
+
+      it 'should not create a one time token', (done) ->
+        @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
+          expect(exists).to.be.false
+          done()
+
+      describe 'JobManager should not get a DeliverMessage job', (done) ->
+        beforeEach (done) ->
+          @jobManager.getRequest ['request'], (error, @request) =>
+            done error
+
+        it "shouldn't add the job", ->
+          expect(@request).to.not.exist
+
+    context 'when there is a received subscription for someone allowed to configure the device', ->
+      beforeEach (done) ->
+        @client.subscribe 'received:subscriber-uuid', done
+
+      beforeEach ->
+        @client.once 'message', (error, @message) =>
+
+      beforeEach (done) ->
+        record =
+          type: 'received'
+          emitterUuid: 'subscriber-uuid'
+          subscriberUuid: 'subscriber-uuid'
+
+        @datastore.insert record, done
+
+      beforeEach (done) ->
+        request =
+          metadata:
+            responseId: 'its-electric'
+            toUuid: 'subscriber-uuid'
+            fromUuid: 'someone-uuid'
+            messageType: 'received'
+            jobType: 'DeliverReceivedMessage'
+          rawData: '{"devices":"*"}'
+
+        @sut.do request, (error, @response) => done error
+
+
+      it 'should return a 204', ->
+        expectedResponse =
+          metadata:
+            responseId: 'its-electric'
+            code: 204
+            status: 'No Content'
+
+        expect(@response).to.deep.equal expectedResponse
+
+      it 'should create a one time token', (done) ->
+        @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
+          expect(exists).to.be.true
+          done()
+
+      describe 'JobManager gets DeliverMessage job', (done) ->
+        beforeEach (done) ->
+          @jobManager.getRequest ['request'], (error, @request) => done error
+
+        it 'should be a received messageType', ->
+          auth =
+            uuid: 'subscriber-uuid'
+            token: 'abc123'
+
+          {rawData, metadata} = @request
+          expect(metadata.auth).to.deep.equal auth
+          expect(metadata.jobType).to.equal 'DeliverReceivedMessage'
+          expect(metadata.messageType).to.equal 'received'
+          expect(metadata.toUuid).to.equal 'subscriber-uuid'
+          expect(metadata.fromUuid).to.equal 'subscriber-uuid'
+          expect(rawData).to.equal JSON.stringify devices:'*', forwardedFor:['subscriber-uuid']

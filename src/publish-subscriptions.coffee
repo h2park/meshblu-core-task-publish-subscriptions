@@ -47,6 +47,9 @@ class DeliverSubscriptions
       async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message,jobType}), callback
 
   _publishSubscription: ({toUuid, fromUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
+    if messageType == "received"
+      return callback() unless subscriberUuid == toUuid
+
     @tokenManager.generateAndStoreTokenInCache subscriberUuid, (error, token) =>
       auth =
         uuid: subscriberUuid
