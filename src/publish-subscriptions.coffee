@@ -44,13 +44,15 @@ class DeliverSubscriptions
   _send: ({toUuid,fromUuid,messageType,message,jobType}, callback=->) =>
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
-      async.eachSeries subscriptions, async.apply(@_publishSubscription, {toUuid,fromUuid,messageType,message,jobType}), callback
+      options = {toUuid, fromUuid, messageType, message, jobType}
+      async.eachSeries subscriptions, async.apply(@_publishSubscription, options), callback
 
   _publishSubscription: ({toUuid, fromUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
     if messageType == "received"
       return callback() unless subscriberUuid == toUuid
 
-    @tokenManager.generateAndStoreTokenInCache subscriberUuid, (error, token) =>
+    options = {uuid: subscriberUuid, expireSeconds: 86400} # 86400 == 24 hours
+    @tokenManager.generateAndStoreTokenInCache options, (error, token) =>
       auth =
         uuid: subscriberUuid
         token: token

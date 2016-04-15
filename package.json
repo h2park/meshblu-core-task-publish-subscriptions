@@ -1,6 +1,6 @@
 {
   "name": "meshblu-core-task-publish-subscriptions",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Publish Meshblu messages to subscribed devices via redis",
   "main": "index.js",
   "dependencies": {
@@ -8,7 +8,7 @@
     "coffee-script": "^1.10.0",
     "lodash": "^3.10.1",
     "meshblu-core-manager-subscription": "^3.0.0",
-    "meshblu-core-manager-token": "^2.3.0",
+    "meshblu-core-manager-token": "^4.2.2",
     "uuid": "^2.0.1"
   },
   "devDependencies": {

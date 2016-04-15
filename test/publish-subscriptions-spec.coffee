@@ -186,7 +186,14 @@ describe 'DeliverSubscriptions', ->
 
       it 'should create a one time token', (done) ->
         @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
+          return done error if error?
           expect(exists).to.be.true
+          done()
+
+      it 'should expire the token in 24 hours', (done) ->
+        @cache.ttl 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, ttl) =>
+          return done error if error?
+          expect(ttl).to.equal 86400
           done()
 
       describe 'JobManager gets DeliverMessage job', (done) ->
