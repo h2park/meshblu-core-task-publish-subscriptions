@@ -4,17 +4,17 @@ redis = require 'fakeredis'
 mongojs = require 'mongojs'
 Datastore = require 'meshblu-core-datastore'
 Cache = require 'meshblu-core-cache'
-TokenManager = require 'meshblu-core-manager-token'
 JobManager = require 'meshblu-core-job-manager'
 DeliverSubscriptions = require '../'
 
 describe 'DeliverSubscriptions', ->
   beforeEach (done) ->
+    database = mongojs 'subscription-test', ['subscriptions']
     @datastore = new Datastore
-      database: mongojs 'subscription-test'
+      database: database
       collection: 'subscriptions'
 
-    @datastore.remove done
+    database.subscriptions.remove done
 
   beforeEach ->
     @redisKey = uuid.v1()
@@ -24,9 +24,6 @@ describe 'DeliverSubscriptions', ->
     @cache = new Cache
       client: _.bindAll redis.createClient @redisPubSubKey
       namespace: 'meshblu-token-one-time'
-
-    @tokenManager = new TokenManager {@cache, @pepper, @uuidAliasResolver}
-    @tokenManager.generateToken = sinon.stub().returns 'abc123'
 
     @jobManager = new JobManager
       client: _.bindAll redis.createClient @redisKey
@@ -41,11 +38,9 @@ describe 'DeliverSubscriptions', ->
       @pepper
     }
 
-    dependencies = {@tokenManager}
-
     @client = _.bindAll redis.createClient @redisPubSubKey
 
-    @sut = new DeliverSubscriptions options, dependencies
+    @sut = new DeliverSubscriptions options
 
   describe '->do', ->
     context 'when subscriptions exist', ->
@@ -84,11 +79,6 @@ describe 'DeliverSubscriptions', ->
 
         expect(@response).to.deep.equal expectedResponse
 
-      it 'should create a one time token', (done) ->
-        @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
-          expect(exists).to.be.true
-          done()
-
       describe 'JobManager gets DeliverMessage job', (done) ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
@@ -97,7 +87,6 @@ describe 'DeliverSubscriptions', ->
         it 'should be a sent messageType', ->
           auth =
             uuid: 'subscriber-uuid'
-            token: 'abc123'
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth
@@ -133,11 +122,6 @@ describe 'DeliverSubscriptions', ->
           rawData: '{"devices":"*"}'
 
         @sut.do request, (error, @response) => done error
-
-      it 'should not create a one time token', (done) ->
-        @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
-          expect(exists).to.be.false
-          done()
 
       describe 'JobManager should not get a DeliverMessage job', (done) ->
         beforeEach (done) ->
@@ -184,18 +168,6 @@ describe 'DeliverSubscriptions', ->
 
         expect(@response).to.deep.equal expectedResponse
 
-      it 'should create a one time token', (done) ->
-        @cache.exists 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, exists) =>
-          return done error if error?
-          expect(exists).to.be.true
-          done()
-
-      it 'should expire the token in 24 hours', (done) ->
-        @cache.ttl 'subscriber-uuid:socWX+a5VqoJNsQV+vfggX3MXdKdbwQ7M/yb0kI2nA4=', (error, ttl) =>
-          return done error if error?
-          expect(ttl).to.equal 86400
-          done()
-
       describe 'JobManager gets DeliverMessage job', (done) ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) => done error
@@ -203,7 +175,6 @@ describe 'DeliverSubscriptions', ->
         it 'should be a received messageType', ->
           auth =
             uuid: 'subscriber-uuid'
-            token: 'abc123'
 
           {rawData, metadata} = @request
           expect(metadata.auth).to.deep.equal auth

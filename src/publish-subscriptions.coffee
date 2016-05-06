@@ -1,16 +1,13 @@
-_ = require 'lodash'
-async = require 'async'
-uuid = require 'uuid'
+_                   = require 'lodash'
+async               = require 'async'
+uuid                = require 'uuid'
+http                = require 'http'
 SubscriptionManager = require 'meshblu-core-manager-subscription'
-TokenManager = require 'meshblu-core-manager-token'
-http = require 'http'
 
 class DeliverSubscriptions
   constructor: (options={},dependencies={}) ->
     {cache,datastore,pepper,@uuidAliasResolver,@jobManager} = options
-    {@tokenManager} = dependencies
     @subscriptionManager ?= new SubscriptionManager {datastore, @uuidAliasResolver}
-    @tokenManager ?= new TokenManager {cache, @uuidAliasResolver, pepper}
 
   _createJob: ({messageType, jobType, toUuid, message, fromUuid, auth}, callback) =>
     request =
@@ -52,19 +49,17 @@ class DeliverSubscriptions
       return callback() unless subscriberUuid == toUuid
 
     options = {uuid: subscriberUuid, expireSeconds: 86400} # 86400 == 24 hours
-    @tokenManager.generateAndStoreTokenInCache options, (error, token) =>
-      auth =
-        uuid: subscriberUuid
-        token: token
+    auth =
+      uuid: subscriberUuid
 
-      message = JSON.parse JSON.stringify(message)
+    message = JSON.parse JSON.stringify(message)
 
-      message.forwardedFor ?= []
+    message.forwardedFor ?= []
 
-      @uuidAliasResolver.resolve toUuid, (error, resolvedToUuid) =>
-        # use the real uuid of the device
-        message.forwardedFor.push resolvedToUuid
+    @uuidAliasResolver.resolve toUuid, (error, resolvedToUuid) =>
+      # use the real uuid of the device
+      message.forwardedFor.push resolvedToUuid
 
-        @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, jobType, messageType, message}, callback
+      @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, jobType, messageType, message}, callback
 
 module.exports = DeliverSubscriptions
