@@ -5,8 +5,13 @@ http                = require 'http'
 SubscriptionManager = require 'meshblu-core-manager-subscription'
 
 class DeliverSubscriptions
-  constructor: (options={},dependencies={}) ->
-    {cache,datastore,pepper,@uuidAliasResolver,@jobManager} = options
+  constructor: (options={}) ->
+    {
+      @firehoseClient
+      datastore
+      @uuidAliasResolver
+      @jobManager
+    } = options
     @subscriptionManager ?= new SubscriptionManager {datastore, @uuidAliasResolver}
 
   _createJob: ({messageType, jobType, toUuid, message, fromUuid, auth}, callback) =>
@@ -34,32 +39,38 @@ class DeliverSubscriptions
     {toUuid, fromUuid, messageType, jobType} = request.metadata
     message = JSON.parse request.rawData
 
-    @_send {toUuid, fromUuid, messageType, message, jobType}, (error) =>
+    @uuidAliasResolver.resolve toUuid, (error, toUuid) =>
       return callback error if error?
-      return @_doCallback request, 204, callback
+      @uuidAliasResolver.resolve fromUuid, (error, fromUuid) =>
+        return callback error if error?
+        @_send {toUuid, fromUuid, messageType, message, jobType}, (error) =>
+          return callback error if error?
+          return @_doCallback request, 204, callback
 
-  _send: ({toUuid,fromUuid,messageType,message,jobType}, callback=->) =>
+  _send: ({toUuid, fromUuid, messageType, message, jobType}, callback=->) =>
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
       options = {toUuid, fromUuid, messageType, message, jobType}
       async.eachSeries subscriptions, async.apply(@_publishSubscription, options), callback
 
   _publishSubscription: ({toUuid, fromUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
-    if messageType == "received"
-      return callback() unless subscriberUuid == toUuid
+    @uuidAliasResolver.resolve subscriberUuid, (error, subscriberUuid) =>
+      return callback error if error?
+      if messageType == "received"
+        return callback() unless subscriberUuid == toUuid
 
-    options = {uuid: subscriberUuid, expireSeconds: 86400} # 86400 == 24 hours
-    auth =
-      uuid: subscriberUuid
+      options = {uuid: subscriberUuid, expireSeconds: 86400} # 86400 == 24 hours
+      auth =
+        uuid: subscriberUuid
 
-    message = JSON.parse JSON.stringify(message)
+      message = JSON.parse JSON.stringify(message)
 
-    message.forwardedFor ?= []
+      message.forwardedFor ?= []
 
-    @uuidAliasResolver.resolve toUuid, (error, resolvedToUuid) =>
-      # use the real uuid of the device
-      message.forwardedFor.push resolvedToUuid
+      @uuidAliasResolver.resolve toUuid, (error, resolvedToUuid) =>
+        # use the real uuid of the device
+        message.forwardedFor.push resolvedToUuid
 
-      @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, jobType, messageType, message}, callback
+        @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, jobType, messageType, message}, callback
 
 module.exports = DeliverSubscriptions

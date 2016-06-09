@@ -21,7 +21,7 @@ describe 'DeliverSubscriptions', ->
     @redisPubSubKey = uuid.v1()
     @pepper = 'im-a-pepper'
     @uuidAliasResolver = resolve: (uuid, callback) => callback(null, uuid)
-    @cache = new Cache
+    @firehoseClient = new Cache
       client: _.bindAll redis.createClient @redisPubSubKey
       namespace: 'meshblu-token-one-time'
 
@@ -30,12 +30,10 @@ describe 'DeliverSubscriptions', ->
       timeoutSeconds: 1
 
     options = {
-      pepper: 'totally-a-secret'
-      @cache
+      @firehoseClient
       @datastore
       @jobManager
       @uuidAliasResolver
-      @pepper
     }
 
     @client = _.bindAll redis.createClient @redisPubSubKey
