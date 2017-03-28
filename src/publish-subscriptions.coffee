@@ -50,7 +50,7 @@ class DeliverSubscriptions
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
       options = {toUuid, fromUuid, messageType, message, jobType}
-      async.each subscriptions, async.apply(@_publishSubscription, options), callback
+      async.eachLimit subscriptions, 100, async.apply(@_publishSubscription, options), callback
 
   _publishSubscription: ({toUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
     @uuidAliasResolver.resolve subscriberUuid, (error, subscriberUuid) =>

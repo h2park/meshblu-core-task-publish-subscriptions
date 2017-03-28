@@ -1,6 +1,6 @@
 {
   "name": "meshblu-core-task-publish-subscriptions",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Publish Meshblu messages to subscribed devices via redis",
   "main": "index.js",
   "dependencies": {
