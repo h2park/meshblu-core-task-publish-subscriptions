@@ -1,10 +1,12 @@
-_ = require 'lodash'
-uuid = require 'uuid'
-redis = require 'fakeredis'
-mongojs = require 'mongojs'
-Datastore = require 'meshblu-core-datastore'
-Cache = require 'meshblu-core-cache'
-JobManager = require 'meshblu-core-job-manager'
+{describe,beforeEach,expect,it} = global
+_                    = require 'lodash'
+uuid                 = require 'uuid'
+redis                = require 'fakeredis'
+RedisNS              = require '@octoblu/redis-ns'
+mongojs              = require 'mongojs'
+Datastore            = require 'meshblu-core-datastore'
+Cache                = require 'meshblu-core-cache'
+JobManager           = require 'meshblu-core-job-manager'
 DeliverSubscriptions = require '../'
 
 describe 'DeliverSubscriptions', ->
@@ -22,12 +24,13 @@ describe 'DeliverSubscriptions', ->
     @pepper = 'im-a-pepper'
     @uuidAliasResolver = resolve: (uuid, callback) => callback(null, uuid)
     @firehoseClient = new Cache
-      client: _.bindAll redis.createClient @redisPubSubKey
+      client: new RedisNS 'ns', redis.createClient @redisPubSubKey
       namespace: 'meshblu-token-one-time'
 
     @jobManager = new JobManager
-      client: _.bindAll redis.createClient @redisKey
+      client: new RedisNS 'ns', redis.createClient @redisKey
       timeoutSeconds: 1
+      jobLogSampleRate: 1
 
     options = {
       @firehoseClient
@@ -36,12 +39,12 @@ describe 'DeliverSubscriptions', ->
       @uuidAliasResolver
     }
 
-    @client = _.bindAll redis.createClient @redisPubSubKey
+    @client = new RedisNS 'ns', redis.createClient @redisPubSubKey
 
     @sut = new DeliverSubscriptions options
 
   describe '->do', ->
-    context 'when subscriptions exist', ->
+    describe 'when subscriptions exist', ->
       beforeEach (done) ->
         @client.subscribe 'sent:subscriber-uuid', done
 
@@ -77,7 +80,7 @@ describe 'DeliverSubscriptions', ->
 
         expect(@response).to.deep.equal expectedResponse
 
-      describe 'JobManager gets DeliverMessage job', (done) ->
+      describe 'JobManager gets DeliverMessage job', ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
             done error
@@ -94,7 +97,7 @@ describe 'DeliverSubscriptions', ->
           expect(metadata.fromUuid).to.equal 'subscriber-uuid'
           expect(rawData).to.equal JSON.stringify devices:'*', forwardedFor:['emitter-uuid']
 
-    context 'when there is a received subscription for someone besides yourself', ->
+    describe 'when there is a received subscription for someone besides yourself', ->
       beforeEach (done) ->
         @client.subscribe 'received:subscriber-uuid', done
 
@@ -121,7 +124,7 @@ describe 'DeliverSubscriptions', ->
 
         @sut.do request, (error, @response) => done error
 
-      describe 'JobManager should not get a DeliverMessage job', (done) ->
+      describe 'JobManager should not get a DeliverMessage job', ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) =>
             done error
@@ -129,7 +132,7 @@ describe 'DeliverSubscriptions', ->
         it "shouldn't add the job", ->
           expect(@request).to.not.exist
 
-    context 'when there is a received subscription for someone allowed to configure the device', ->
+    describe 'when there is a received subscription for someone allowed to configure the device', ->
       beforeEach (done) ->
         @client.subscribe 'received:subscriber-uuid', done
 
@@ -166,7 +169,7 @@ describe 'DeliverSubscriptions', ->
 
         expect(@response).to.deep.equal expectedResponse
 
-      describe 'JobManager gets DeliverMessage job', (done) ->
+      describe 'JobManager gets DeliverMessage job', ->
         beforeEach (done) ->
           @jobManager.getRequest ['request'], (error, @request) => done error
 

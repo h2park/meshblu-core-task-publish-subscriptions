@@ -1,4 +1,3 @@
-_                   = require 'lodash'
 async               = require 'async'
 uuid                = require 'uuid'
 http                = require 'http'
@@ -51,26 +50,20 @@ class DeliverSubscriptions
     @subscriptionManager.emitterListForType {emitterUuid: toUuid, type: messageType}, (error, subscriptions) =>
       return callback error if error?
       options = {toUuid, fromUuid, messageType, message, jobType}
-      async.eachSeries subscriptions, async.apply(@_publishSubscription, options), callback
+      async.each subscriptions, async.apply(@_publishSubscription, options), callback
 
-  _publishSubscription: ({toUuid, fromUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
+  _publishSubscription: ({toUuid, messageType, message, jobType}, {subscriberUuid}, callback) =>
     @uuidAliasResolver.resolve subscriberUuid, (error, subscriberUuid) =>
       return callback error if error?
       if messageType == "received"
         return callback() unless subscriberUuid == toUuid
-
-      options = {uuid: subscriberUuid, expireSeconds: 86400} # 86400 == 24 hours
       auth =
         uuid: subscriberUuid
-
       message = JSON.parse JSON.stringify(message)
-
       message.forwardedFor ?= []
-
       @uuidAliasResolver.resolve toUuid, (error, resolvedToUuid) =>
         # use the real uuid of the device
         message.forwardedFor.push resolvedToUuid
-
         @_createJob {toUuid: subscriberUuid, fromUuid: subscriberUuid, auth, jobType, messageType, message}, callback
 
 module.exports = DeliverSubscriptions
